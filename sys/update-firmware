@@ -1,0 +1,23 @@
+#!/bin/sh
+
+### 更新 Linux 固件，需要 root 权限。
+
+set -e
+
+if [ "$(whoami)" != root ]; then
+	echo You must be super user
+	exit 1
+fi
+
+echo Updating firmware...
+
+for path in /usr/src/linux-firmware /usr/src/unofficial-amdgpu-firmware-repo; do
+	cd "$path"
+	git pull
+	mkdir -p /lib/firmware/
+	cp -r ./* /lib/firmware/
+done
+
+update-initramfs -u
+
+echo Done

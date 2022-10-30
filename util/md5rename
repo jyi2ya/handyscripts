@@ -1,0 +1,35 @@
+#!/bin/bash
+
+### 将文件以其 md5 值重命名，并保留后缀名。
+
+PATH="/bin:/usr/bin:/usr/local/bin:/usr/games:$PATH"
+
+for cmd in "md5sum"; do
+	if ! command -v "$cmd" > /dev/null; then
+		printf "%s: command \`%s' not found\n" "$0" "$cmd" >&2
+		exit 1
+	fi
+done
+
+for file in "$@"; do 
+	postfix="${file##*.}"
+	if [ "$postfix" == "$file" ]; then
+		postfix=""
+	else
+		postfix=".$postfix"
+	fi
+
+	md5="`md5sum "$file"`" || continue
+	md5=${md5%% *}
+
+	[ "$md5$postfix" == "$file" ] && continue
+
+	if [ -e "$md5$postfix" ]; then
+		printf "%s: file \`%s' exists, from \`%s'.\n" \
+			"$0" "$md5$postfix" "$file" >&2
+		mkdir -p 'duplicate_file/'
+		mv "$file" 'duplicate_file/'
+	else
+		mv "$file" "$md5$postfix"
+	fi
+done

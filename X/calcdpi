@@ -1,0 +1,121 @@
+#!/usr/bin/perl
+
+### 提供屏幕的物理参数和最大分辨率，生成 xrandr 配置
+
+use v5.12;
+use Getopt::Long;
+use Data::Dumper;
+use POSIX;
+
+my %config = (
+    cross_cm => undef,
+    width_cm => undef,
+    height_cm => undef,
+
+    cross_mm => undef,
+    width_mm => undef,
+    height_mm => undef,
+
+    cross_in => undef,
+    width_in => undef,
+    height_in => undef,
+
+    cross_px => undef,
+    width_px => undef,
+    height_px => undef,
+
+    device_name => undef,
+    distance_cm => undef,
+);
+
+my $default_distance_cm = 28;
+GetOptions(
+    (map { s/_/-/gr . ":f" => \$config{$_} } grep { /^(cross|width|height)/ } keys %config),
+    'device-name=s' => \$config{device_name},
+    'distance-cm=i' => \$config{distance_cm},
+) or die "error in parsing arguments";
+
+my $device_name = $config{device_name};
+die "Device name must be provided" unless defined $device_name;
+$config{distance_cm} //= $default_distance_cm;
+
+my $default_dpi = 96;
+
+sub verify_and_assign {
+    my ($mm, $cm, $in) = @_;
+    my $result_mm;;
+    if (defined $mm) {
+        $result_mm = $mm;
+    }
+    if (defined $cm) {
+        $result_mm = $cm * 10;
+    }
+    if (defined $in) {
+        $result_mm = $in * 25.4;
+    }
+    return $result_mm;
+}
+
+my $cross_mm = verify_and_assign(@config{qw/cross_mm cross_cm cross_in/});
+my $width_mm = verify_and_assign(@config{qw/width_mm width_cm width_in/});
+my $height_mm = verify_and_assign(@config{qw/height_mm height_cm height_in/});
+my $cross_px = $config{cross_px};
+my $height_px = $config{height_px};
+my $width_px = $config{width_px};
+
+my $ratio = undef;
+
+sub defined_num { scalar(grep { defined $_ } @_) }
+
+die "Insuffecient arguments" if defined_num($cross_mm, $width_mm, $height_mm) == 0;
+die "Insuffecient arguments" if defined_num($cross_px, $width_px, $height_px) == 0;
+
+sub get_ratio {
+    my ($cross, $width, $height) = @_;
+    my $ratio = undef;
+    return undef unless (defined_num($cross, $width, $height) >= 2);
+    $width = sqrt($cross ** 2 - $height ** 2)
+        if defined $cross and defined $height;
+    $height = sqrt($cross ** 2 - $width ** 2)
+        if defined $cross and defined $width;
+    return $width / $height;
+}
+
+$ratio //= get_ratio($cross_mm, $width_mm, $height_mm);
+$ratio //= get_ratio($cross_px, $width_px, $height_px);
+
+die "Insuffecient arguements, cannot calculate screen geometry propertries"
+    unless defined $ratio;
+
+sub calc_cross {
+    my ($cross, $width, $height, $ratio) = @_;
+    return $cross if defined $cross;
+    return undef unless defined $ratio;
+    return sqrt(1 + 1 / $ratio ** 2) * $width if defined $width;
+    return sqrt(1 + $ratio ** 2) * $height if defined $height;
+    return undef;
+}
+
+$cross_mm = calc_cross($cross_mm, $width_mm, $height_mm, $ratio);
+my $cross_in = $cross_mm / 25.4;
+$cross_px = calc_cross($cross_px, $width_px, $height_px, $ratio);
+
+my $distance_cm = $config{distance_cm};
+my $real_dpi = sprintf '%.2f', $cross_px / $cross_in;
+my $zoom_ratio = sprintf '%.2f', ($distance_cm / $default_distance_cm) * ($real_dpi / $default_dpi);
+my $zoom_in = sprintf '%.0f', ceil($zoom_ratio);
+my $zoom_in_inv = sprintf '%.2f', 1 / $zoom_in;
+my $zoom_out = sprintf '%.2f', $zoom_in / $zoom_ratio;
+my $dpi = sprintf '%.0f', $zoom_in * $default_dpi;
+
+print <<EOF
+xrandr --output "$device_name" --auto
+xrandr --output "$device_name" --auto --scale "${zoom_out}x${zoom_out}"
+echo 'Xft.dpi: $dpi' | xrdb -merge
+export ELM_SCALE=$zoom_in
+export GDK_SCALE=$zoom_in
+export GDK_DPI_SCALE=$zoom_in_inv
+export QT_AUTO_SCREEN_SCALE_FACTOR=0
+export QT_FONT_DPI=$dpi
+export QT_SCALE_FACTOR=$zoom_in
+EOF

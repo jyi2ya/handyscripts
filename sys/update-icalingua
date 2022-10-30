@@ -1,0 +1,30 @@
+#!/bin/sh
+
+### 更新 icalingua，仅限 deb
+
+die() { echo "$@" >&2 ; exit 1; }
+
+latest_deb_url=$(curl -L https://api.github.com/repos/Icalingua-plus-plus/Icalingua-plus-plus/releases/latest | grep -o 'https://[^"]*amd64[.]deb"' | tr -d '"')
+# e.g. "https://github.com/Icalingua-plus-plus/Icalingua-plus-plus/releases/download/v2.7.2/icalingua_2.7.2_amd64.deb"
+
+
+[ -n "$latest_deb_url" ] || die Cannot get latest package url
+
+latest_version=$(printf '%s' "$latest_deb_url" | grep -o 'releases/download/v[^/]*' | cut -f3 -d/)
+installed_version=v$(dpkg-query --status icalingua | grep '^Version:' | cut -f2 -d' ')
+
+if [ "$installed_version" = "$latest_version" ]; then
+    echo Already installed
+    exit
+fi
+
+cd /tmp || die
+
+pkg_name=$(basename "$latest_deb_url")
+
+curl -L -o "$pkg_name" "$latest_deb_url" || die Cannot download package
+
+if ! sudo apt install ./"$pkg_name"; then
+    rm -f "./$pkg_name"
+    die Cannot install package
+fi

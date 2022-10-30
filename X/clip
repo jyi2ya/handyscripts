@@ -1,0 +1,5 @@
+#!/bin/sh
+
+### 从文件或者标准输入中读取数据并放到剪贴板上，需要 xclip
+
+cat "$@" | xclip -selection clipboard -i

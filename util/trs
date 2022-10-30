@@ -1,0 +1,21 @@
+#!/bin/sh
+
+### 查单词，需要 sdcv
+
+word="${1:-$(xclip -selection clipboard -o)}"
+
+for dict in \
+    "Oxford Advanced Learner's Dictionary" \
+    "Oxford English Dictionary 2nd Ed. P1" \
+    "Oxford English Dictionary 2nd Ed. P2"
+do
+    result=$(sdcv -n -u "$dict" "$word")
+    pronoun=$(sdcv -n -u "朗道英汉字典5.0" "$word" | grep -o '^\*\[[^]]*\]')
+    if ! printf '%s\n' "$result" | grep -q 'sorry :('; then
+        {
+            printf '%s\n' "$pronoun"
+            printf '%s\n' "$result" 
+        } | fmt -cus | less
+        break
+    fi
+done

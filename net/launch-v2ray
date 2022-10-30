@@ -1,0 +1,36 @@
+#!/bin/sh
+
+### 启动 v2ray，比较魔法文档懒得写了 :3
+
+die() {
+    echo "$@"
+    exit 1
+}
+
+help() {
+    echo Possible options:
+    for i in *.cfg; do
+        basename "$i" .cfg
+    done
+    exit 0
+}
+
+cd "$(dirname "$(readlink "$0")")" || die "Cannot enter $(dirname "$(readlink "$0")")"
+[ $# -ge 1 ] || exec sh "$0" common
+[ -r "$1".cfg ] || help
+[ -r "$1".cfg/config.json ] || die "Cannot read $1.cfg/config.json"
+[ -d "$PWD/asset" ] || die "Cannot find v2ray location asset (default $PWD/asset)"
+{ command -v v2ray > /dev/null || [ -x "$PWD/asset/v2ray" ]; } || die "Cannot find v2ray executable"
+
+if command -v v2ray >/dev/null; then
+    V2RAY="$PWD/asset/v2ray"
+else
+    V2RAY=$(command -v v2ray)
+fi
+
+[ -x "$1".cfg/preexec.sh ] && "$1".cfg/preexec.sh
+
+killall v2ray
+export V2RAY_LOCATION_ASSET="$PWD/asset"
+export V2RAY_LOCATION_CONFIG="$PWD/$1.cfg"
+nohup "$V2RAY" >"$HOME/.local/var/log/v2ray.log" 2>&1 &

@@ -1,0 +1,30 @@
+#!/usr/bin/env perl
+
+### 把 markdown 文档中引用的图片用 base64 编码后再塞回去，使其不再需要引用图片。需要 imagemagick。
+
+use v5.12;
+
+sub process_image
+{
+	$_ = shift;
+	if (/\.gif$/) {
+		"data:image/gif;base64," .
+		qx {
+		convert -fuzz 15% -layers Optimize \Q$_\E - | base64 | tr -d '\n'
+		}
+	} else {
+		"data:image/jpeg;base64," .
+		qx {
+		convert -resize \Q640x480>\E -strip -quality 75% \Q$_\E jpeg:- | base64 | tr -d '\n'
+		}
+	}
+}
+
+while (defined(my $line = <>)) {
+	for ($line =~ /!\[[^\]]*\]\([^)]*\)/g) {
+		my ($mark, $desc, $file) = /(!\[([^\]]*)\]\(([^)]*)\))/;
+		$file = process_image $file;
+		$line =~ s/\Q$mark\E/![]($file)/;
+	}
+	print $line;
+}

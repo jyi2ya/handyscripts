@@ -1,0 +1,33 @@
+#!perl
+
+### 猜给定网站的 rss 订阅地址
+
+use v5.12;
+use HTTP::Tiny;
+
+my @postfix1 = (qw{atom index external feed rss rss2});
+my @postfix2 = (qw{.xml .php /news .asp}, '');
+my @prefix = (qw{www. feed. atom. rss.}, '');
+
+my @ok;
+my $http = HTTP::Tiny->new();
+while (<>) {
+	chomp;
+	s{/?$}{/};
+	s{\bwww\.}{};
+	for my $i (@prefix) {
+		local $_ = $_;
+		s{://}{://$i};
+		for my $j (@postfix1) {
+			local $_ = $_ . $j;
+			for my $k (@postfix2) {
+				local $_ = $_ . $k;
+				my $res = $http->get($_);
+				if ($res->{success} and $res->{content} =~ /<feed/) {
+					say;
+					push @ok, $_;
+				}
+			}
+		}
+	}
+}

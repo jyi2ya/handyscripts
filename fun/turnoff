@@ -1,0 +1,30 @@
+#!/usr/bin/perl
+
+### 随机展示一篇 turnoff.us 上的漫画
+
+use HTTP::Tiny;
+use JSON;
+use strict;
+use warnings;
+
+my $url = 'http://turnoff.us';
+my $tmpdir = '/tmp/turnoff.us';
+my $http;
+my $image_url;
+my $image_name;
+my $image_page;
+my @list;
+
+$http = HTTP::Tiny->new();
+
+$http->get($url)->{content} =~ m!var pages = (\[[^\]]*\])!s;
+@list = @{decode_json($1 =~ s/[\n ]//gsr)};
+
+$image_page = $http->get($url . $list[rand(@list)])->{content};
+$image_page =~ m!<article class="post-content">[^s]*src="([^"]*)"!gs;
+$image_url = $url . $1;
+$image_name = (split("/", $image_url))[5];
+
+mkdir($tmpdir) unless (-d $tmpdir);
+$http->mirror($image_url, "$tmpdir/$image_name") unless (-f "$tmpdir/$image_name");
+system("xdg-open $tmpdir/$image_name");

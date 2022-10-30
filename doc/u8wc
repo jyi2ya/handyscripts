@@ -1,0 +1,33 @@
+#!/usr/bin/perl
+
+### 统计文档字数
+
+use warnings;
+use strict;
+use Encode qw/decode_utf8/;
+use POSIX;
+
+undef $/;
+my $width = 0;
+my $tot = 0;
+for my $file (@ARGV) {
+	$width = length($file) if (length($file) > $width);
+}
+
+for my $file (@ARGV) {
+	my $fd;
+	open($fd, "<", $file) || next;
+	my $line = <$fd>;
+	close($fd);
+	my $enword = 0;
+	while (my $t = $line =~ s/([^[:alnum:]])[[:alnum:]]+([^[:alnum:]])/$1$2/g) {
+		$enword += $t;
+	}
+	$line =~ s/[[:space:]]//g;
+	$line =~ s/[[:punct:]]//g;
+	$line = decode_utf8($line);
+	printf("%s %d\n", $file . (" " x ($width - length($file))), $enword + length($line));
+	$tot += $enword + length($line);
+}
+
+print("total: $tot\n");

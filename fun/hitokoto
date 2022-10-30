@@ -1,0 +1,97 @@
+#!/usr/bin/perl
+
+### 提供终端里的 “一言” :3
+
+use Encode qw/decode_utf8/;
+use Getopt::Long qw/GetOptions/;
+use HTTP::Tiny;
+use IO::Socket::SSL;
+use JSON::PP;
+use strict;
+use utf8;
+use warnings;
+
+binmode STDOUT, 'utf8';
+
+my $VERSION = 'v66.cc.ff';
+
+sub print_help_page_and_exit()
+{
+	print <<EOF;
+文档过期啦，然而我也不打算修。
+Usage: hitokoto.pl [-p] [-a n] [-c str] [-e str]
+终端一言。
+
+  -h, --help        打印此页面并退出。
+  -v, --version     显示版本号。
+  -p                从 gushi.ci 获得一句诗词。
+
+  -a, --api=n       指定 api 。
+API 应从以下选择（默认为 0 ）：
+0  https://v1.hitokoto.cn/                大陆 + 海外
+1  https://international.v1.hitokoto.cn/  大陆
+
+  -c, --cat=str     指定一言类型。
+类型应从以下选择（默认为随机）：
+a  Anime    动画
+b  Comic    漫画
+c  Game     游戏
+d  Novel    小说
+e  Myself   原创
+f  Internet 来自网络
+g  Other    其他
+
+  -e, --encode=str  指定输出格式。
+输出格式应从以下选择（默认为 text）：
+text     纯净文本
+json     不进行unicode转码的json文本
+js       指定选择器(默认.hitokoto)的同步执行函数。
+unicode  unicode转码的json文本
+
+Examples:
+hitokoto.pl （从7种分类中随机抽取）
+hitokoto.pl -c b （请求获得一个分类是漫画的句子）
+hitokoto.pl --cat=b --encode=text （请求获得一个来自网络的句子，并以纯文本格式输出）
+EOF
+	exit(0);
+}
+
+sub print_version_and_exit()
+{
+	print <<EOF;
+hitokoto version: $VERSION
+EOF
+	exit(0);
+}
+
+my $http = HTTP::Tiny->new();
+
+my ($cat, $poem, $encode, $api, $print_help, $print_version);
+GetOptions(
+	'h|help' => \$print_help,
+	'v|version' => \$print_version,
+	'a|api=i' => \$api,
+	'e|encode=s' => \$encode,
+	'c|cat=s' => \$cat,
+	'p|poem' => \$poem,
+) || print_help_page_and_exit();
+
+print_help_page_and_exit() if ($print_help);
+print_version_and_exit() if ($print_version);
+
+if ($poem) {
+	my $hash = decode_json
+	$http->get('https://v1.jinrishici.com/all.json')->{content};
+	printf "[%s - %s]\n%s\n", $hash->{origin}, $hash->{author},
+	$hash->{content};
+	exit;
+}
+
+my @apis = qw!https://v1.hitokoto.cn https://international.v1.hitokoto.cn!;
+$api //= 0;
+$cat //= '';
+$encode //= 'json';
+my $url = "$apis[$api]/?c=$cat&encode=$encode";
+my $hash = decode_json $http->get($url)->{content};
+chomp $hash->{hitokoto};
+printf "[%s]\n%s\n", $hash->{from}, $hash->{hitokoto};

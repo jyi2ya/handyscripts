@@ -1,0 +1,20 @@
+#!/bin/sh
+
+### 更新 v2ray，以及附赠的 geoip 和 geosite。需要提前设置 CONFIG_V2RAY_DIR，是 v2ray 需要被安装的位置。
+
+# CONFIG_V2RAY_DIR="$HOME/.config/v2ray/asset"
+CONFIG_V2RAY_DIR=""
+
+die() {
+    echo "$@"
+    exit 1
+}
+
+[ -n "$CONFIG_V2RAY_DIR" ] || die "CONFIG_V2RAY_DIR not set"
+
+latest_zip_url=$(curl -L https://api.github.com/repos/v2fly/v2ray-core/releases/latest | grep -o 'https://[^"]*linux-64[.]zip"' | tr -d '"')
+[ -n "$latest_zip_url" ] || die Cannot get latest package
+cd "$CONFIG_V2RAY_DIR" || die Cannot enter asset directory "($CONFIG_V2RAY_DIR)"
+package_name=$(basename "$latest_zip_url")
+curl -L -o "$package_name" "$latest_zip_url" || die Cannot download package
+yes | unzip "$package_name" || die Cannot unzip package
