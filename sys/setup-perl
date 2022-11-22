@@ -1,0 +1,21 @@
+#!/bin/sh
+
+### 在新系统上快速配置 Perl 环境
+
+command -v perl >/dev/null || exit 1
+
+mkdir -p ~/.local/perl5/lib/perl5
+mkdir -p ~/.local/perl5/bin
+PERL5LIB="$HOME/.local/perl5/lib/perl5"; export PERL5LIB
+PATH="$PATH:$HOME/.local/perl5/bin"; export PATH
+
+curl cpanmin.us > "$HOME/.local/perl5/bin/cpanm"
+chmod +x "$HOME/.local/perl5/bin/cpanm"
+cpanm local::lib
+if grep -q 'local::lib' ~/.bashrc; then
+    cat <<'EOF'
+PERL5LIB="$HOME/.local/perl5/lib/perl5"; export PERL5LIB
+PATH="$PATH:$HOME/.local/perl5/bin"; export PATH
+eval "$(perl -Mlocal::lib="$HOME"/.local/perl5)"
+EOF
+fi
