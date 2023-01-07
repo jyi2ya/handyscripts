@@ -28,12 +28,14 @@ my @lines = map { decode_utf8 $_ } (<>);
 my @title_count;
 say "# 目录";
 for (@lines) {
-    if (/^(#+)\s*(.*)$/) {
+    next if /^```/ ... /^```/;
+    if (/^(#+)\s*(.*?)\s*$/) {
         my ($level, $title) = (length($1), $2);
         my $indent = "  " x $level;
         my $url = $title;
         $url =~ s/[^_[:^punct:]]//g;
         $url =~ s/[[:space:]]/-/g;
+        $url = lc $url;
         @title_count = splice @title_count, 0, $level;
         $title_count[$level - 1] += 1;
         my $index = join ".", @title_count;
@@ -44,10 +46,15 @@ for (@lines) {
 say "";
 
 for my $line (@lines) {
-	for ($line =~ /!\[[^\]]*\]\([^)]*\)/g) {
-		my ($mark, $desc, $file) = /(!\[([^\]]*)\]\(([^)]*)\))/;
-		$file = process_image $file;
-		$line =~ s/\Q$mark\E/![]($file)/;
-	}
-	print $line;
+    if ($line =~ /^```/ ... $line =~ /^```/) {
+        print $line;
+    } else {
+        for ($line =~ /!\[[^\]]*\]\([^)]*\)/g) {
+            my ($mark, $desc, $file) = /(!\[([^\]]*)\]\(([^)]*)\))/;
+            $file = process_image $file;
+            $line =~ s/\Q$mark\E/![]($file)/;
+        }
+        print $line;
+    }
 }
+
