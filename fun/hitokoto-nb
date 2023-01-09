@@ -1,0 +1,8 @@
+#!/bin/sh
+
+### 一言，但是是非阻塞的 :3
+
+mkdir -p ~/.config/hitokoto || exit 1
+touch ~/.config/hitokoto/db.txt || exit 1
+tail -1 ~/.config/hitokoto/db.txt | tr '|' '\n'
+( { printf '%s' "$(hitokoto)" | tr '\n' '|'; echo; } >> ~/.config/hitokoto/db.txt & )
